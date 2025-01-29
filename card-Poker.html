@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Póker en HTML5</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<style>
+    body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: green;
+    color: white;
+}
+
+.game-container {
+    margin: 20px auto;
+    width: 80%;
+    max-width: 600px;
+    background-color: #004d00;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+#hand {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.card {
+    width: 80px;
+    height: 120px;
+    background-color: white;
+    color: black;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.card-img {
+    width: 80px;
+    height: auto;
+    margin: 5px;
+}
+</style>
+
+<script>
+
+    class Deck {
+    constructor() {
+        this.suits = ['♠', '♥', '♦', '♣'];
+        this.ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        this.deck = [];
+        this.initializeDeck();
+    }
+
+    initializeDeck() {
+        this.deck = [];
+        for (let suit of this.suits) {
+            for (let rank of this.ranks) {
+                this.deck.push({ rank, suit });
+            }
+        }
+        this.shuffle();
+    }
+
+    shuffle() {
+        for (let i = this.deck.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+        }
+    }
+
+    dealHand(size = 5) {
+        return this.deck.splice(0, size);
+    }
+}
+
+    $(document).ready(function() {
+    let deck = new Deck();
+
+    function renderHand(hand) {
+        $("#hand").empty();
+        hand.forEach(card => {
+            $("#hand").append(`<div class="card">${card.rank}${card.suit}</div>`);
+        });
+    }
+
+    $("#deal").click(function() {
+        let hand = deck.dealHand();
+        renderHand(hand);
+    });
+});
+
+</script>
+
+<script>
+    function evaluateHand(hand) {
+    let ranks = hand.map(card => card.rank);
+    let suits = hand.map(card => card.suit);
+
+    let rankCounts = {};
+    ranks.forEach(rank => rankCounts[rank] = (rankCounts[rank] || 0) + 1);
+
+    let countValues = Object.values(rankCounts).sort((a, b) => b - a);
+    let isFlush = new Set(suits).size === 1;
+    let sortedRanks = ranks.map(r => "23456789TJQKA".indexOf(r)).sort((a, b) => a - b);
+    let isStraight = sortedRanks.every((val, i, arr) => i === 0 || val === arr[i - 1] + 1);
+
+    if (isStraight && isFlush) return "Escalera de Color";
+    if (countValues[0] === 4) return "Póker";
+    if (countValues[0] === 3 && countValues[1] === 2) return "Full House";
+    if (isFlush) return "Color";
+    if (isStraight) return "Escalera";
+    if (countValues[0] === 3) return "Trío";
+    if (countValues[0] === 2 && countValues[1] === 2) return "Doble Pareja";
+    if (countValues[0] === 2) return "Pareja";
+    
+    return "Carta Alta";
+}
+
+$("#deal").click(function() {
+    let hand = deck.dealHand();
+    renderHand(hand);
+    let result = evaluateHand(hand);
+    $("#result").text(`Tu jugada: ${result}`);
+});
+
+let chips = 100;
+
+$("#placeBet").click(function() {
+    let bet = parseInt($("#bet").val());
+    if (bet > 0 && bet <= chips) {
+        chips -= bet;
+        $("#chips").text(chips);
+        $("#result").text(`Apostaste ${bet} fichas.`);
+    } else {
+        alert("Apuesta no válida.");
+    }
+});
+
+</script>
+
+<script>
+    $("#deal").click(function() {
+    let playerHand = deck.dealHand();
+    let cpuHand = deck.dealHand();
+
+    renderHand(playerHand);
+    $("#cpuHand").empty();
+    cpuHand.forEach(card => {
+        $("#cpuHand").append(`<div class="card">${card.rank}${card.suit}</div>`);
+    });
+
+    let playerResult = evaluateHand(playerHand);
+    let cpuResult = evaluateHand(cpuHand);
+
+    $("#result").text(`Tu jugada: ${playerResult} | Oponente: ${cpuResult}`);
+
+    if (playerResult === cpuResult) {
+        $("#result").append(" | Empate!");
+        chips += parseInt($("#bet").val());  // Recupera la apuesta
+    } else if (compareHands(playerResult, cpuResult)) {
+        $("#result").append(" | ¡Ganaste!");
+        chips += parseInt($("#bet").val()) * 2; // Duplica la apuesta
+    } else {
+        $("#result").append(" | Perdiste.");
+    }
+    $("#chips").text(chips);
+});
+
+function compareHands(playerResult, cpuResult) {
+    let ranking = ["Carta Alta", "Pareja", "Doble Pareja", "Trío", "Escalera", "Color", "Full House", "Póker", "Escalera de Color"];
+    return ranking.indexOf(playerResult) > ranking.indexOf(cpuResult);
+}
+</script>
+
+<p>Fichas: <span id="chips">100</span></p>
+<input type="number" id="bet" placeholder="Apuesta">
+<button id="placeBet">Apostar</button>
+    
+    <div class="cpu-hand">
+        <h2>Mano del oponente</h2>
+        <div id="cpuHand"></div>
+    </div>
+
+    <div class="game-container">
+        <h1>Póker en HTML5</h1>
+        <div class="player-hand">
+            <h2>Tu mano</h2>
+            <div id="hand"></div>
+        </div>
+        <button id="deal">Repartir cartas</button>
+        <p id="result">Tu jugada aparecerá aquí.</p>
+    </div>
+
+    <script src="deck.js"></script>
+    <script src="script.js"></script>
+
+</body>
+</html>
